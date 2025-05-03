@@ -1,0 +1,190 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { protectRoute } from '../../utils/auth';
+import Navigation from '../../components/Navigation';
+
+// Proteger esta ruta - solo usuarios autenticados pueden acceder
+const { user } = await protectRoute(Astro);
+
+---
+
+<Layout title="Registrar Síntomas">
+  <Navigation user={user} client:load />
+  
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Registrar Síntomas</h1>
+      <p class="text-gray-600 dark:text-gray-400 mt-1">
+        Registra cómo te sientes para hacer un seguimiento de tu bienestar.
+      </p>
+    </div>
+    
+    <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
+      <form class="space-y-6">
+        <!-- Fecha y hora -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label for="date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha</label>
+            <input
+              type="date"
+              id="date"
+              name="date"
+              value={new Date().toISOString().split('T')[0]}
+              class="w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
+            />
+          </div>
+          <div>
+            <label for="time" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Hora</label>
+            <input
+              type="time"
+              id="time"
+              name="time"
+              value={new Date().toTimeString().slice(0, 5)}
+              class="w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
+            />
+          </div>
+        </div>
+        
+        <!-- Nivel de bienestar -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">¿Cómo te sientes?</label>
+          <div class="flex items-center justify-between max-w-md mx-auto mt-2">
+            <div class="flex flex-col items-center">
+              <button type="button" class="w-12 h-12 rounded-full bg-red-500 hover:bg-red-600 transition-colors mb-1">1</button>
+              <span class="text-xs text-gray-500 dark:text-gray-400">Muy mal</span>
+            </div>
+            <div class="flex flex-col items-center">
+              <button type="button" class="w-12 h-12 rounded-full bg-orange-500 hover:bg-orange-600 transition-colors mb-1">2</button>
+              <span class="text-xs text-gray-500 dark:text-gray-400">Mal</span>
+            </div>
+            <div class="flex flex-col items-center">
+              <button type="button" class="w-12 h-12 rounded-full bg-yellow-500 hover:bg-yellow-600 transition-colors mb-1">3</button>
+              <span class="text-xs text-gray-500 dark:text-gray-400">Regular</span>
+            </div>
+            <div class="flex flex-col items-center">
+              <button type="button" class="w-12 h-12 rounded-full bg-lime-500 hover:bg-lime-600 transition-colors mb-1">4</button>
+              <span class="text-xs text-gray-500 dark:text-gray-400">Bien</span>
+            </div>
+            <div class="flex flex-col items-center">
+              <button type="button" class="w-12 h-12 rounded-full bg-green-500 hover:bg-green-600 transition-colors mb-1">5</button>
+              <span class="text-xs text-gray-500 dark:text-gray-400">Muy bien</span>
+            </div>
+          </div>
+          <input type="hidden" id="wellnessLevel" name="wellnessLevel" value="3" />
+        </div>
+        
+        <!-- Síntomas -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Síntomas (selecciona los que apliquen)</label>
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mt-1">
+            <div class="flex items-center">
+              <input id="symptom-dolor-cabeza" name="symptoms" type="checkbox" value="dolor-cabeza" class="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500" />
+              <label for="symptom-dolor-cabeza" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">Dolor de cabeza</label>
+            </div>
+            <div class="flex items-center">
+              <input id="symptom-nauseas" name="symptoms" type="checkbox" value="nauseas" class="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500" />
+              <label for="symptom-nauseas" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">Náuseas</label>
+            </div>
+            <div class="flex items-center">
+              <input id="symptom-fatiga" name="symptoms" type="checkbox" value="fatiga" class="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500" />
+              <label for="symptom-fatiga" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">Fatiga</label>
+            </div>
+            <div class="flex items-center">
+              <input id="symptom-hinchazon" name="symptoms" type="checkbox" value="hinchazon" class="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500" />
+              <label for="symptom-hinchazon" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">Hinchazón</label>
+            </div>
+            <div class="flex items-center">
+              <input id="symptom-dolor-estomago" name="symptoms" type="checkbox" value="dolor-estomago" class="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500" />
+              <label for="symptom-dolor-estomago" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">Dolor de estómago</label>
+            </div>
+            <div class="flex items-center">
+              <input id="symptom-reflujo" name="symptoms" type="checkbox" value="reflujo" class="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500" />
+              <label for="symptom-reflujo" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">Reflujo</label>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Tiempo de aparición -->
+        <div>
+          <label for="onsetTime" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">¿Cuándo aparecieron los síntomas?</label>
+          <select
+            id="onsetTime"
+            name="onsetTime"
+            class="w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
+          >
+            <option value="immediately">Inmediatamente después de comer</option>
+            <option value="30min">30 minutos después</option>
+            <option value="1hour">1 hora después</option>
+            <option value="2hours">2 horas después</option>
+            <option value="several-hours">Varias horas después</option>
+            <option value="unknown">No estoy seguro</option>
+          </select>
+        </div>
+        
+        <!-- Notas adicionales -->
+        <div>
+          <label for="notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notas adicionales</label>
+          <textarea
+            id="notes"
+            name="notes"
+            rows="3"
+            placeholder="Describe cualquier otra información relevante sobre cómo te sientes..."
+            class="w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
+          ></textarea>
+        </div>
+        
+        <!-- Relacionar con comida -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">¿Relacionar con una comida?</label>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Si estos síntomas están relacionados con una comida, puedes seleccionarla aquí.</p>
+          <button
+            type="button"
+            class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            Seleccionar comida
+          </button>
+        </div>
+        
+        <!-- Botones de acción -->
+        <div class="flex justify-end mt-6 space-x-3">
+          <a
+            href="/dashboard"
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            Cancelar
+          </a>
+          <button
+            type="submit"
+            class="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
+          >
+            Guardar síntomas
+          </button>
+        </div>
+      </form>
+    </div>
+  </main>
+</Layout>
+
+<script>
+  // Código para manejar la selección del nivel de bienestar
+  document.addEventListener('DOMContentLoaded', () => {
+    const wellnessButtons = document.querySelectorAll('button[type="button"]');
+    const wellnessInput = document.getElementById('wellnessLevel') as HTMLInputElement;
+    
+    wellnessButtons.forEach((button, index) => {
+      button.addEventListener('click', () => {
+        // Resaltar el botón seleccionado
+        wellnessButtons.forEach((btn, i) => {
+          btn.classList.remove('ring-2', 'ring-offset-2', 'ring-primary-500');
+        });
+        button.classList.add('ring-2', 'ring-offset-2', 'ring-primary-500');
+        
+        // Guardar el valor (el índice + 1 para obtener 1-5)
+        wellnessInput.value = String(index + 1);
+      });
+    });
+  });
+</script>

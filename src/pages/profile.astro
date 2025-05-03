@@ -1,0 +1,102 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Navigation from '../components/Navigation';
+import { protectRoute } from '../utils/auth';
+
+// Proteger esta ruta - solo usuarios autenticados pueden acceder
+const { user } = await protectRoute(Astro);
+---
+
+<Layout title="Mi Perfil">
+  <Navigation user={user} client:load />
+  
+  <main class="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Mi Perfil</h1>
+    
+    <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+      <div class="px-4 py-5 sm:px-6 flex items-center">
+        {user.image ? (
+          <img src={user.image} alt={user.name} class="h-16 w-16 rounded-full mr-4" />
+        ) : (
+          <div class="h-16 w-16 rounded-full bg-primary-500 flex items-center justify-center text-white text-2xl font-medium mr-4">
+            {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+          </div>
+        )}
+        
+        <div>
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+            {user.name || 'Usuario sin nombre'}
+          </h2>
+          <p class="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
+        </div>
+      </div>
+      
+      <div class="border-t border-gray-200 dark:border-gray-700">
+        <dl>
+          <div class="px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">ID de usuario</dt>
+            <dd class="mt-1 text-sm text-gray-900 dark:text-white sm:mt-0 sm:col-span-2">{user.id}</dd>
+          </div>
+          
+          <div class="px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 bg-gray-50 dark:bg-gray-700">
+            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Email verificado</dt>
+            <dd class="mt-1 text-sm text-gray-900 dark:text-white sm:mt-0 sm:col-span-2">
+              {user.emailVerified ? (
+                <span class="inline-flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500 mr-1.5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                  </svg>
+                  <span>Verificado</span>
+                </span>
+              ) : (
+                <span class="inline-flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-500 mr-1.5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                  </svg>
+                  <span>No verificado</span>
+                </span>
+              )}
+            </dd>
+          </div>
+          
+          <div class="px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Fecha de registro</dt>
+            <dd class="mt-1 text-sm text-gray-900 dark:text-white sm:mt-0 sm:col-span-2">
+              {new Date(user.createdAt).toLocaleDateString('es-ES', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              })}
+            </dd>
+          </div>
+          
+          <div class="px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 bg-gray-50 dark:bg-gray-700">
+            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Método de inicio de sesión</dt>
+            <dd class="mt-1 text-sm text-gray-900 dark:text-white sm:mt-0 sm:col-span-2">
+              <div class="flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                {user.provider || 'Google / Apple'}
+              </div>
+            </dd>
+          </div>
+        </dl>
+      </div>
+      
+      <div class="px-4 py-4 sm:px-6 border-t border-gray-200 dark:border-gray-700">
+        <form action="/" method="get">
+          <button 
+            type="submit" 
+            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Cerrar sesión
+          </button>
+        </form>
+      </div>
+    </div>
+  </main>
+</Layout>

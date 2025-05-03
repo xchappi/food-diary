@@ -1,0 +1,253 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    String    @id @default(cuid())
+  name                  String?
+  email                 String    @unique
+  emailVerified         DateTime?
+  image                 String?
+  privacyConfiguration  Json?     @default("{}")
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  
+  accounts              Account[]
+  sessions              Session[]
+  meals                 Meal[]
+  symptoms              Symptom[]
+  allergyProfiles       AllergyProfile[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Meal {
+  id                String    @id @default(cuid())
+  userId            String
+  date              DateTime  @db.Date
+  time              DateTime  @db.Time(6)
+  mealType          MealType
+  description       String?   @db.Text
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  symptoms          Symptom[]
+  dishes            Dish[]    // Relación con platos
+  mealFoodItems     MealFoodItem[] // Relación corregida para compatibilidad
+
+  @@map("meals")
+}
+
+model Symptom {
+  id                String    @id @default(cuid())
+  userId            String
+  mealId            String?
+  date              DateTime  @db.Date
+  time              DateTime  @db.Time(6)
+  wellnessLevel     Int       @db.SmallInt
+  symptoms          String[]
+  intensity         Json      // {symptom: "intensity"} where intensity is "mild", "moderate", "severe"
+  onsetTime         String?
+  notes             String?   @db.Text
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  meal              Meal?     @relation(fields: [mealId], references: [id], onDelete: SetNull)
+
+  @@map("symptoms")
+}
+
+model NutritionalValue {
+  id                String    @id @default(cuid())
+  dishId            String    @unique
+  calories          Float
+  proteins          Float
+  carbohydrates     Float
+  fats              Float
+  fiber             Float?
+  sugars            Float?
+  sodium            Float?
+  vitamins          Json?
+  minerals          Json?
+  dataSource        DataSource
+  accuracy          Float?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  dish              Dish      @relation(fields: [dishId], references: [id], onDelete: Cascade)
+
+  @@map("nutritional_values")
+}
+
+model FoodItem {
+  id                    String    @id @default(cuid())
+  name                  String
+  category              String
+  nutritionalValues     Json      // Per 100g/ml
+  allergens             String[]
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  mealFoodItems         MealFoodItem[]
+
+  @@map("food_items")
+}
+
+// Este modelo será deprecado en favor de DishIngredient
+model MealFoodItem {
+  id            String    @id @default(cuid())
+  mealId        String
+  foodItemId    String
+  quantity      Float?    // in grams or ml
+  createdAt     DateTime  @default(now())
+
+  // Relación corregida
+  meal          Meal      @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  foodItem      FoodItem  @relation(fields: [foodItemId], references: [id], onDelete: Cascade)
+
+  @@map("meal_food_items")
+}
+
+// Nuevo modelo para ingredientes
+model Ingredient {
+  id                    String    @id @default(cuid())
+  name                  String    @unique
+  category              String?   // vegetal, proteína, cereal, lácteo, etc.
+  commonAllergen        Boolean   @default(false) // Si es un alérgeno común
+  allergenType          String?   // gluten, lactosa, frutos secos, etc.
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  dishIngredients       DishIngredient[]
+  allergyProfiles       AllergyProfileIngredient[]
+
+  @@map("ingredients")
+}
+
+// Relación entre comidas e ingredientes
+model DishIngredient {
+  id            String    @id @default(cuid())
+  dishId        String
+  ingredientId  String
+  quantity      String?   // Cantidad aproximada (1 cucharada, 100g, etc.)
+  createdAt     DateTime  @default(now())
+
+  dish          Dish      @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  ingredient    Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@unique([dishId, ingredientId])
+  @@map("dish_ingredients")
+}
+
+// Modelo para perfil de alergias/intolerancias del usuario
+model AllergyProfile {
+  id            String    @id @default(cuid())
+  userId        String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ingredients   AllergyProfileIngredient[]
+
+  @@map("allergy_profiles")
+}
+
+// Modelo para los platos individuales dentro de una comida
+model Dish {
+  id                String    @id @default(cuid())
+  mealId            String
+  name              String
+  description       String?   @db.Text
+  order             Int       @default(0)     // Orden del plato dentro de la comida
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  meal              Meal      @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  nutritionalValue  NutritionalValue?
+  ingredients       DishIngredient[]
+
+  @@map("dishes")
+}
+
+// Relación entre perfiles de alergia e ingredientes
+model AllergyProfileIngredient {
+  id                String    @id @default(cuid())
+  allergyProfileId  String
+  ingredientId      String
+  reactionSeverity  String    // leve, moderada, severa
+  notes             String?
+  confirmed         Boolean   @default(false) // Si está médicamente confirmado
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  allergyProfile    AllergyProfile @relation(fields: [allergyProfileId], references: [id], onDelete: Cascade)
+  ingredient        Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@unique([allergyProfileId, ingredientId])
+  @@map("allergy_profile_ingredients")
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+  BRUNCH
+  SUPPER
+}
+
+enum DataSource {
+  AI
+  USER_MANUAL
+  DATABASE
+}
+

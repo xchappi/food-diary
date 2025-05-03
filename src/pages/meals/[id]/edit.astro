@@ -1,0 +1,76 @@
+---
+// Obtener el ID de la comida de los parámetros de la URL
+const { id } = Astro.params;
+
+if (!id) {
+  return Astro.redirect('/meals');
+}
+
+// Redirigir a la versión v2 de la página de edición
+return Astro.redirect(`/meals/edit-v2?id=${id}`);
+
+import Layout from '../../../layouts/Layout.astro';
+import { getCurrentUser } from '../../../lib/auth';
+import Navigation from '../../../components/Navigation';
+import MealForm from '../../../features/registro-comida/components/MealForm';
+import prisma from '../../../lib/db';
+
+const user = await getCurrentUser(Astro.request);
+
+// Redireccionar si no hay usuario autenticado
+if (!user) {
+  return Astro.redirect('/api/auth/signin?callbackUrl=/meals');
+}
+
+// Obtener la comida a editar
+const meal = await prisma.meal.findUnique({
+  where: {
+    id,
+    userId: user.id,
+  },
+  include: {
+    nutritionalValue: true,
+  },
+});
+
+// Si no existe o no pertenece al usuario, redireccionar
+if (!meal) {
+  return Astro.redirect('/meals');
+}
+
+// Formatear datos para el formulario
+const mealData = {
+  id: meal.id,
+  date: meal.date.toISOString().split('T')[0],
+  time: meal.time.toISOString().slice(11, 16),
+  mealType: meal.mealType,
+  description: meal.description || '',
+  dishName: meal.dishName || '',
+};
+---
+
+<Layout title="Editar comida">
+  <Navigation user={user} client:load />
+  
+  <main class="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+    <div class="mb-8">
+      <div class="flex items-center mb-2">
+        <a href={`/meals/${id}`} class="inline-flex items-center text-primary-600 dark:text-primary-400 hover:underline">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Volver a detalles
+        </a>
+      </div>
+      
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Editar comida</h1>
+      <p class="text-gray-600 dark:text-gray-300 mt-1">
+        Actualiza la información de tu comida registrada.
+      </p>
+    </div>
+    
+    <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+      <MealForm initialData={mealData} isEditing={true} client:load />
+    </div>
+  </main>
+</Layout>

@@ -1,0 +1,400 @@
+---
+// Obtener el ID de la comida de los parámetros de la URL
+const { id } = Astro.params;
+
+if (!id) {
+  return Astro.redirect('/meals');
+}
+
+// Redirigir automáticamente a la versión nueva
+return Astro.redirect(`/meals/${id}-v2`);
+
+import Layout from '../../layouts/Layout.astro';
+import Navigation from '../../components/Navigation';
+import prisma from '../../lib/db';
+import { protectRoute } from '../../utils/auth';
+
+// Proteger esta ruta - solo usuarios autenticados pueden acceder
+const { user } = await protectRoute(Astro);
+
+// Obtener la comida con sus detalles
+const meal = await prisma.meal.findUnique({
+  where: {
+    id,
+    userId: user.id,
+  },
+  include: {
+    nutritionalValue: true,
+    symptoms: true,
+    ingredients: {
+      include: {
+        ingredient: true
+      }
+    }
+  },
+});
+
+// Si no existe o no pertenece al usuario, redireccionar
+if (!meal) {
+  return Astro.redirect('/meals');
+}
+
+// Formatear fechas y tipos de comida
+const date = new Date(meal.date);
+const formattedDate = date.toLocaleDateString('es-ES', { 
+  day: '2-digit', 
+  month: '2-digit', 
+  year: 'numeric' 
+});
+
+const time = new Date(`1970-01-01T${meal.time.toISOString().split('T')[1]}`);
+const formattedTime = time.toLocaleTimeString('es-ES', { 
+  hour: '2-digit', 
+  minute: '2-digit' 
+});
+
+const mealTypeMap = {
+  BREAKFAST: 'Desayuno',
+  LUNCH: 'Almuerzo',
+  DINNER: 'Comida',
+  SNACK: 'Snack',
+  BRUNCH: 'Brunch',
+  SUPPER: 'Cena'
+};
+
+const formattedMealType = mealTypeMap[meal.mealType as keyof typeof mealTypeMap];
+
+// Verificar si hay síntomas asociados
+const hasSymptoms = meal.symptoms.length > 0;
+
+// Verificar si hay ingredientes asociados
+const hasIngredients = meal.ingredients.length > 0;
+
+// Detectar ingredientes que son alérgenos comunes
+const allergenIngredients = meal.ingredients
+  .filter(mi => mi.ingredient.commonAllergen)
+  .map(mi => mi.ingredient);
+
+// Formatear fecha de creación
+const createdAt = new Date(meal.createdAt);
+const formattedCreatedAt = createdAt.toLocaleDateString('es-ES', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit'
+});
+---
+
+<Layout title={meal.dishName || 'Detalle de comida'}>
+  <Navigation user={user} client:load />
+  
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+    <div class="mb-6">
+      <div class="flex items-center mb-2">
+        <a href="/meals" class="inline-flex items-center text-primary-600 dark:text-primary-400 hover:underline">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Volver a comidas
+        </a>
+      </div>
+      
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+          {meal.dishName || 'Comida sin nombre'}
+        </h1>
+        
+        <div class="mt-2 sm:mt-0 flex space-x-2">
+          <a
+            href={`/meals/${meal.id}/edit`}
+            class="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Editar
+          </a>
+          
+          <form action={`/api/meals/${meal.id}/delete`} method="post" onsubmit="return confirm('¿Estás seguro de que deseas eliminar esta comida?');">
+            <button
+              type="submit"
+              class="inline-flex items-center px-3 py-1.5 border border-transparent rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Eliminar
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+    
+    <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+      <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <h3 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha y hora</h3>
+            <p class="mt-1 text-sm text-gray-900 dark:text-white">
+              {formattedDate} a las {formattedTime}
+            </p>
+          </div>
+          
+          <div>
+            <h3 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tipo de comida</h3>
+            <p class="mt-1">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-800 dark:text-primary-100">
+                {formattedMealType}
+              </span>
+            </p>
+          </div>
+          
+          <div>
+            <h3 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Registrado</h3>
+            <p class="mt-1 text-sm text-gray-900 dark:text-white">
+              {formattedCreatedAt}
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="px-6 py-5 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="md:col-span-2">
+          <div class="mb-6">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-3">Detalles</h3>
+            
+            {meal.description ? (
+              <p class="text-gray-700 dark:text-gray-300 whitespace-pre-line">
+                {meal.description}
+              </p>
+            ) : (
+              <p class="text-gray-500 dark:text-gray-400 italic">
+                No hay descripción disponible.
+              </p>
+            )}
+          </div>
+          
+          {/* Sección de Ingredientes */}
+          <div class="mb-6">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-3">Ingredientes</h3>
+            
+            {hasIngredients ? (
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {meal.ingredients.map((mealIngredient) => (
+                  <div class="flex items-center p-2 rounded-md bg-gray-50 dark:bg-gray-700">
+                    <span class={`w-2 h-2 rounded-full mr-2 ${mealIngredient.ingredient.commonAllergen ? 'bg-yellow-500' : 'bg-green-500'}`}></span>
+                    <span class="text-gray-900 dark:text-white">{mealIngredient.ingredient.name}</span>
+                    {mealIngredient.quantity && (
+                      <span class="ml-1 text-xs text-gray-500 dark:text-gray-400">({mealIngredient.quantity})</span>
+                    )}
+                    {mealIngredient.ingredient.commonAllergen && (
+                      <span class="ml-2 px-1.5 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                        {mealIngredient.ingredient.allergenType || 'Alérgeno'}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p class="text-gray-500 dark:text-gray-400 italic">
+                No hay ingredientes registrados para esta comida.
+              </p>
+            )}
+            
+            {/* Alerta de alérgenos */}
+            {allergenIngredients.length > 0 && (
+              <div class="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
+                <div class="flex">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-yellow-800 dark:text-yellow-300">
+                      Contiene posibles alérgenos
+                    </p>
+                    <p class="text-xs text-yellow-700 dark:text-yellow-400 mt-1">
+                      Esta comida contiene ingredientes que son posibles alérgenos comunes: 
+                      <span class="font-medium">{allergenIngredients.map(ing => ing.name).join(', ')}</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {hasSymptoms && (
+            <div class="mt-6">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-3">Síntomas registrados</h3>
+              
+              <div class="bg-yellow-50 dark:bg-yellow-900/30 p-4 rounded-md">
+                <div class="flex items-center mb-2">
+                  <p class="text-sm font-medium text-yellow-800 dark:text-yellow-300 mr-2">
+                    Nivel de bienestar:
+                  </p>
+                  
+                  <div class="flex items-center">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        class={`h-5 w-5 ${i < meal.symptoms[0].wellnessLevel ? 'text-yellow-500' : 'text-gray-300 dark:text-gray-600'}`}
+                        viewBox="0 0 20 20" 
+                        fill="currentColor"
+                      >
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118l-2.8-2.034c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    ))}
+                    <span class="ml-1 text-sm text-yellow-800 dark:text-yellow-300">
+                      {meal.symptoms[0].wellnessLevel}/5
+                    </span>
+                  </div>
+                </div>
+                
+                {meal.symptoms[0].symptoms.length > 0 && (
+                  <div class="mb-2">
+                    <p class="text-sm font-medium text-yellow-800 dark:text-yellow-300 mb-1">
+                      Síntomas:
+                    </p>
+                    <div class="flex flex-wrap gap-1">
+                      {meal.symptoms[0].symptoms.map((symptom: string) => (
+                        <span class="px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200">
+                          {symptom}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {meal.symptoms[0].onsetTime && (
+                  <p class="text-sm text-yellow-800 dark:text-yellow-300">
+                    <span class="font-medium">Tiempo de aparición:</span> {meal.symptoms[0].onsetTime}
+                  </p>
+                )}
+                
+                {meal.symptoms[0].notes && (
+                  <div class="mt-2">
+                    <p class="text-sm font-medium text-yellow-800 dark:text-yellow-300 mb-1">
+                      Notas:
+                    </p>
+                    <p class="text-sm text-yellow-800 dark:text-yellow-300 whitespace-pre-line">
+                      {meal.symptoms[0].notes}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {!hasSymptoms && (
+            <div class="mt-6">
+              <a 
+                href={`/symptoms/new?mealId=${meal.id}`}
+                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Registrar síntomas
+              </a>
+            </div>
+          )}
+        </div>
+        
+        <div>
+          <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-3">Información nutricional</h3>
+          
+          {meal.nutritionalValue ? (
+            <div class="space-y-4">
+              <div class="bg-white dark:bg-gray-700 rounded-lg shadow-sm p-4">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-sm font-medium text-gray-900 dark:text-white">Calorías</span>
+                  <span class="text-sm text-gray-700 dark:text-gray-300">{Math.round(meal.nutritionalValue.calories)} kcal</span>
+                </div>
+                <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2.5">
+                  <div class="bg-primary-600 h-2.5 rounded-full" style={`width: ${Math.min(100, (meal.nutritionalValue.calories / 2000) * 100)}%`}></div>
+                </div>
+              </div>
+              
+              <div class="bg-white dark:bg-gray-700 rounded-lg shadow-sm p-4">
+                <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Macronutrientes</h4>
+                
+                <div class="space-y-3">
+                  <div>
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Proteínas</span>
+                      <span class="text-xs text-gray-500 dark:text-gray-400">{Math.round(meal.nutritionalValue.proteins)}g</span>
+                    </div>
+                    <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1.5">
+                      <div class="bg-blue-500 h-1.5 rounded-full" style={`width: ${Math.min(100, (meal.nutritionalValue.proteins / 50) * 100)}%`}></div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Carbohidratos</span>
+                      <span class="text-xs text-gray-500 dark:text-gray-400">{Math.round(meal.nutritionalValue.carbohydrates)}g</span>
+                    </div>
+                    <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1.5">
+                      <div class="bg-yellow-500 h-1.5 rounded-full" style={`width: ${Math.min(100, (meal.nutritionalValue.carbohydrates / 300) * 100)}%`}></div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Grasas</span>
+                      <span class="text-xs text-gray-500 dark:text-gray-400">{Math.round(meal.nutritionalValue.fats)}g</span>
+                    </div>
+                    <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1.5">
+                      <div class="bg-red-500 h-1.5 rounded-full" style={`width: ${Math.min(100, (meal.nutritionalValue.fats / 70) * 100)}%`}></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {(meal.nutritionalValue.fiber || meal.nutritionalValue.sugars || meal.nutritionalValue.sodium) && (
+                <div class="bg-white dark:bg-gray-700 rounded-lg shadow-sm p-4">
+                  <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Adicionales</h4>
+                  
+                  <div class="space-y-2">
+                    {meal.nutritionalValue.fiber && (
+                      <div class="flex items-center justify-between">
+                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Fibra</span>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">{Math.round(meal.nutritionalValue.fiber)}g</span>
+                      </div>
+                    )}
+                    
+                    {meal.nutritionalValue.sugars && (
+                      <div class="flex items-center justify-between">
+                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Azúcares</span>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">{Math.round(meal.nutritionalValue.sugars)}g</span>
+                      </div>
+                    )}
+                    
+                    {meal.nutritionalValue.sodium && (
+                      <div class="flex items-center justify-between">
+                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Sodio</span>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">{Math.round(meal.nutritionalValue.sodium)}mg</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {meal.nutritionalValue.accuracy && (
+                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Precisión estimada: {meal.nutritionalValue.accuracy}%
+                </div>
+              )}
+            </div>
+          ) : (
+            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 text-center">
+              <p class="text-sm text-gray-500 dark:text-gray-400">
+                No hay información nutricional disponible para esta comida.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  </main>
+</Layout>

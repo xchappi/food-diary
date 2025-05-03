@@ -1,0 +1,77 @@
+---
+import ToastProvider from "../components/ToastProvider";
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = "Registra tus comidas y síntomas para identificar posibles alergias alimentarias" } = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description} />
+    <title>{title} | Food Diary</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script is:inline>
+      // Check for dark mode preference
+      if (
+        localStorage.getItem('theme') === 'dark' ||
+        (!localStorage.getItem('theme') &&
+          window.matchMedia('(prefers-color-scheme: dark)').matches)
+      ) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    </script>
+    <style is:global>
+      /* Variables CSS para los Toast */
+      :root {
+        --toast-bg: white;
+        --toast-color: #1f2937;
+        --toast-border: #e2e8f0;
+        
+        --toast-success-bg: #ecfdf5;
+        --toast-success-color: #065f46;
+        --toast-success-border: #d1fae5;
+        
+        --toast-error-bg: #fef2f2;
+        --toast-error-color: #991b1b;
+        --toast-error-border: #fee2e2;
+        
+        --toast-loading-bg: #f3f4f6;
+        --toast-loading-color: #1f2937;
+        --toast-loading-border: #e5e7eb;
+      }
+      
+      html.dark {
+        --toast-bg: #1f2937;
+        --toast-color: #f9fafb;
+        --toast-border: #374151;
+        
+        --toast-success-bg: #065f46;
+        --toast-success-color: #d1fae5;
+        --toast-success-border: #064e3b;
+        
+        --toast-error-bg: #7f1d1d;
+        --toast-error-color: #fee2e2;
+        --toast-error-border: #991b1b;
+        
+        --toast-loading-bg: #374151;
+        --toast-loading-color: #f3f4f6;
+        --toast-loading-border: #4b5563;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+    <ToastProvider client:load />
+    <slot />
+  </body>
+</html>

@@ -1,0 +1,111 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { protectRoute } from '../../utils/auth/protect-route';
+import MealForm from '../../features/registro-comida/components/MealForm-v2';
+import prisma from '../../lib/db';
+
+// Proteger ruta - redirigir a login si no está autenticado
+const result = await protectRoute(Astro);
+
+// Si es una redirección, la función ya se encargó de redirigir
+if (result instanceof Response) {
+  return result;
+}
+
+// Si llegamos aquí, el usuario está autenticado
+const { user } = result;
+
+// Obtener ID de la comida
+const id = Astro.url.searchParams.get('id');
+if (!id) {
+  return Astro.redirect('/meals');
+}
+
+// Obtener detalle de la comida para editar
+let initialData;
+try {
+  const meal = await prisma.meal.findFirst({
+    where: {
+      id,
+      userId: user.id
+    },
+    include: {
+      dishes: {
+        include: {
+          nutritionalValue: true,
+          ingredients: {
+            include: {
+              ingredient: true
+            }
+          },
+
+        },
+        orderBy: { order: 'asc' }
+      }
+    }
+  });
+
+  if (!meal) {
+    return Astro.redirect('/meals');
+  }
+
+  // Formatear datos para el formulario
+  initialData = {
+    id: meal.id,
+    date: meal.date.toISOString().split('T')[0],
+    time: meal.time.toTimeString().slice(0, 5),
+    mealType: meal.mealType,
+    description: meal.description || '',
+    // Transformar los platos para el componente
+    dishes: meal.dishes.map(dish => ({
+      id: dish.id,
+      name: dish.name,
+      description: dish.description || '',
+      order: dish.order,
+      nutritionalData: dish.nutritionalValue ? {
+        calories: dish.nutritionalValue.calories,
+        proteins: dish.nutritionalValue.proteins,
+        carbohydrates: dish.nutritionalValue.carbohydrates,
+        fats: dish.nutritionalValue.fats,
+        fiber: dish.nutritionalValue.fiber,
+        sugars: dish.nutritionalValue.sugars,
+        sodium: dish.nutritionalValue.sodium
+      } : null,
+      ingredients: dish.ingredients.map(item => ({
+        name: item.ingredient.name,
+        possibleAllergen: item.ingredient.commonAllergen,
+        allergenType: item.ingredient.allergenType,
+        quantity: item.quantity
+      })),
+      images: []
+    }))
+  };
+} catch (error) {
+  console.error('Error al obtener la comida:', error);
+  return Astro.redirect('/meals');
+}
+---
+
+<Layout title="Editar Comida | Food Diary">
+  <div class="max-w-4xl mx-auto px-4 py-8">
+    <div class="mb-6">
+      <div class="flex items-center mb-2">
+        <a href={`/meals/${id}-v2`} class="inline-flex items-center text-primary-600 dark:text-primary-400 hover:underline">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Volver a detalle de comida
+        </a>
+      </div>
+      
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Editar Comida</h1>
+      <p class="text-gray-600 dark:text-gray-400 mt-1">
+        Modifica los detalles de la comida y sus platos.
+      </p>
+    </div>
+    
+    <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
+      <MealForm initialData={initialData} isEditing={true} client:load />
+    </div>
+  </div>
+</Layout>
