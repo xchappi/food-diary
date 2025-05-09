@@ -1,4 +1,4 @@
-# Food Diary v2
+# Food Diary
 
 Una aplicación web para el seguimiento y registro de hábitos alimenticios. 
 
